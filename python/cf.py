@@ -45,3 +45,6 @@ if data['status'] == 'OK':
         f.write(temp)
         cnt+=1
     f.close()
+else:
+    print('There may be some issues on Codeforces or the servers or not responding');
+    print('Please Wait and try it after few minutes');
