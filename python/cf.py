@@ -1,50 +1,52 @@
-import requests
+import http.client
+import json
 
-url = "http://codeforces.com/api"
-options = '/contest.list'
+url = "codeforces.com"
+options = '/api/contest.list'
 link = 'http://codeforces.com/contest/'
 
-data = requests.get(url+options)
-data = data.json()
 
-div3 = []
-edu = []
-if data['status'] == 'OK':
-    data = data['result']
-    for i in data:
-        if 'Educational' in i['name']:
-            edu.append(int(i['id']))
+def make_request(url, options, use_https=False):
+    if use_https:
+        conn = http.client.HTTPSConnection(url)
+    else:
+        conn = http.client.HTTPConnection(url)
+    conn.request("GET", options)
+    response = conn.getresponse()
+    return response
 
-        if 'Div. 3' in i['name']:
-            div3.append(int(i['id']))
+
+response = make_request(url, options, use_https=True)
+
+if response.status == 301 or response.status == 302:
+    redirected_url = response.getheader('Location')
+    if redirected_url:
+        new_url = redirected_url.replace('http://', '').replace('https://', '')
+        new_host, new_path = new_url.split('/', 1)
+        new_path = '/' + new_path
+        response = make_request(new_host, new_path, use_https=True)
+
+if response.status == 200:
+    data = json.loads(response.read().decode())
+
+    div3 = []
+    edu = []
+
+    for fct in data['result']:
+        if "Educational" in fct['name']:
+            edu.append(fct['id'])
+        if "Div. 3" in fct['name']:
+            div3.append(fct['id'])
 
     div3.sort()
     edu.sort()
 
-    f = open("div3.txt","w+")
-    cnt = 1
-    for i in div3:
-        temp = 'Div3 '
-        temp += str(cnt)
-        temp += ':  '
-        temp += link+str(i)
-        temp += '\n'
-        f.write(temp)
-        cnt+=1
-    f.close()
+    with open("Div3.txt", "w") as div3_file:
+        for i, contest_id in enumerate(div3, start=1):
+            div3_file.write(f"Div3 Rounds {i} : {link}{contest_id}\n")
 
-
-    f = open("educational.txt","w+")
-    cnt = 1
-    for i in edu:
-        temp = 'Educational Round '
-        temp += str(cnt)
-        temp += ':  '
-        temp += link+str(i)
-        temp += '\n'
-        f.write(temp)
-        cnt+=1
-    f.close()
+    with open("Educational.txt", "w") as edu_file:
+        for i, contest_id in enumerate(edu, start=1):
+            edu_file.write(f"Educational Round {i} : {link}{contest_id}\n")
 else:
-    print('There may be some issues on Codeforces or the servers or not responding');
-    print('Please Wait and try it after few minutes');
+    print(f"Request failed with status code {response.status}")
